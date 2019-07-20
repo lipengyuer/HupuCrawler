@@ -25,7 +25,9 @@ class HupuPipeline(object):
         while q.qsize() > 0:
             data = q.get()
             #print('a post ', data.keys())
-            dataList.append(dict(data))
+            temp_data = dict(data)
+            temp_data['_id'] = temp_data['post_id']
+            dataList.append(temp_data)
         #print("dataList[0]['type']", dataList[0]['type'])
 #         for data in dataList:
 #             if data['type']=='advPost':

@@ -2,7 +2,7 @@
 from hupu.items import HupuItem
 from scrapy.http import Request
 from bs4 import BeautifulSoup
-import re, time
+import re, time, pymongo
 
 class HupuSpider(scrapy.Spider):
 
@@ -12,13 +12,31 @@ class HupuSpider(scrapy.Spider):
         'Connection': 'keep - alive',  # 保持链接状态
         'User-Agent': 'Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/52.0.2743.82 Safari/537.36'
     }
+    
+    def __init__(self):
+        self.db = None
+        
     def loadCookie(self):
         with open(r'C:\Users\Administrator\Desktop\hupu\hupu\spiders\cookie.txt', 'r') as f:
+#         with open(r'/opt/dev/task/hupu/hupu/spiders/cookie.txt', 'r') as f:
+
             lines = f.readlines()
             lines = list(map(lambda x: x.replace('\n', '').split('\t'), lines))
             cookieDict = {}
             for line in lines: cookieDict[line[0]] = line[1]
         return cookieDict
+    
+    def getConnectionMongo(self):
+        conn = pymongo.MongoClient('192.168.1.104', 27017)
+        self.db = conn.hupuPost  # 连接mydb数据库，没有则自动创建
+    
+    def if_processed(self, post_id):
+        if self.db==None:
+            self.getConnectionMongo()
+        result = list(self.db['advPosts'].find({'_id': post_id}))
+        print(result)
+        if len(result)>0: return True
+        else: False
 
     def start_requests(self):
         self.hupuCookie = self.loadCookie()
@@ -28,6 +46,9 @@ class HupuSpider(scrapy.Spider):
         for i in range(26000000, 30000000):
         #for i in [2]:#[27131625]*30 + [27344410]:
             count += 1
+            if self.if_processed(str(i)):
+                print("这个id已经处理过了", i)
+                continue
             url = "https://bbs.hupu.com/" + str(i) + '.html'
             t2 = time.time()
             tcost = t2 - t1
