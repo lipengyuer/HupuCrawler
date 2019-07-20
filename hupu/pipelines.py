@@ -20,7 +20,7 @@ class HupuPipeline(object):
         self.follPostQueue = Queue(maxsize=1000)
         self.db = getConnectionMongo()
 
-    def insertThem(self, q, collectionName):
+    def insertAdv(self, q, collectionName):
         dataList = []
         while q.qsize() > 0:
             data = q.get()
@@ -39,6 +39,24 @@ class HupuPipeline(object):
             with open('error.txt', 'a+') as f:
                 f.write("存储失败"  + str(e) + ' ' + collectionName + ' ' + str(dataList))
 
+    def insertFol(self, q, collectionName):
+        dataList = []
+        while q.qsize() > 0:
+            data = q.get()
+            #print('a post ', data.keys())
+            temp_data = dict(data)
+            dataList.append(temp_data)
+        #print("dataList[0]['type']", dataList[0]['type'])
+#         for data in dataList:
+#             if data['type']=='advPost':
+#                 print("store adv post ", collectionName, dataList)
+        try:
+            self.db[collectionName].insert_many(dataList)
+        except Exception as e:
+#             print("failed to store data "  + str(e) + ' ' + collectionName)
+            with open('error.txt', 'a+') as f:
+                f.write("存储失败"  + str(e) + ' ' + collectionName + ' ' + str(dataList))
+                
 
     def process_item(self, item, spider):
         # print("获取到的数据是", item['floor_num'])
@@ -50,8 +68,8 @@ class HupuPipeline(object):
             self.follPostQueue.put(item)
 
         if self.advPostQueue.qsize()==10:
-            self.insertThem(self.advPostQueue, 'advPosts')
+            self.insertAdv(self.advPostQueue, 'advPosts')
         if self.follPostQueue.qsize()==10:
-            self.insertThem(self.follPostQueue, 'follPosts')
+            self.insertFol(self.follPostQueue, 'follPosts')
         return item
 
