@@ -3,6 +3,7 @@ from hupu.items import HupuItem
 from scrapy.http import Request
 from bs4 import BeautifulSoup
 import re, time, pymongo
+import requests
 
 class HupuSpider(scrapy.Spider):
 
@@ -17,7 +18,7 @@ class HupuSpider(scrapy.Spider):
         self.db = None
         
     def loadCookie(self):
-        with open(r'C:\Users\Administrator\Desktop\hupu\hupu\spiders\cookie.txt', 'r') as f:
+        with open(r'E:\work\task\HupuCrawler\hupu\spiders\cookie.txt', 'r') as f:
 #         with open(r'/opt/dev/task/hupu/hupu/spiders/cookie.txt', 'r') as f:
 
             lines = f.readlines()
@@ -34,22 +35,31 @@ class HupuSpider(scrapy.Spider):
         if self.db==None:
             self.getConnectionMongo()
         result = list(self.db['advPosts'].find({'_id': post_id}))
-        print(result)
+        print("是否已经收录", result)
         if len(result)>0: return True
         else: False
-
+    
+    def page_exists(self, url):
+        req = requests.head(url)
+        status_code = req.status_code
+        if status_code==200: return True
+        else: return False
+        
     def start_requests(self):
         self.hupuCookie = self.loadCookie()
         # print(self.hupCookie)
         count = 0
         t1 = time.time()
         for i in range(26000000, 30000000):
-        #for i in [2]:#[27131625]*30 + [27344410]:
+#         for i in [31327261]:#[27131625]*30 + [27344410]:
             count += 1
             if self.if_processed(str(i)):
                 print("这个id已经处理过了", i)
                 continue
+            
             url = "https://bbs.hupu.com/" + str(i) + '.html'
+            if not self.page_exists(url): continue
+                
             t2 = time.time()
             tcost = t2 - t1
             print(url, "row no" , i, "speed: ", int(count / (tcost + 1)) )
@@ -98,8 +108,9 @@ class HupuSpider(scrapy.Spider):
         # 回复总数
         advPostData = {'type': 'advPost'}
         num_reply = response.xpath('//*[@id="t_main"]/div[2]/div[2]/span/span[1]').extract()
-#         print('num_reply', num_reply)
+        
         num_reply = '' if len(num_reply)==0 else num_reply[0]
+        if type(num_reply)==unicode: num_reply = num_reply.encode("utf8")
         num_reply = re.findall('[0-9]+', str(num_reply))
         num_reply = int(num_reply[0]) if len(num_reply)>0 else 0
         advPostData['num_reply'] = num_reply
@@ -107,6 +118,7 @@ class HupuSpider(scrapy.Spider):
         #亮了的回帖总数
         num_light_reposts = response.xpath('//*[@id="t_main"]/div[2]/div[2]/span/span[2]').extract()
         num_light_reposts = '' if len(num_light_reposts) == 0 else num_light_reposts[0]
+        if type(num_light_reposts)==unicode: num_light_reposts = num_light_reposts.encode("utf8")
         num_light_reposts = re.findall('[0-9]+', str(num_light_reposts))
         num_light_reposts = int(num_light_reposts[0]) if len(num_light_reposts)>0 else 0
         advPostData['num_light_reposts'] = num_light_reposts
